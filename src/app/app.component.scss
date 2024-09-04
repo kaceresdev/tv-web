@@ -1,0 +1,32 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  .info {
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: stretch;
+    flex-direction: column;
+    .mobile {
+      text-align: center;
+      font-weight: bold;
+      font-size: 20px;
+    }
+    .generatedNumber {
+      text-align: center;
+      font-weight: bold;
+      font-size: 20px;
+    }
+  }
+  .floatingMessage {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #28a745;
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+  }
+}
