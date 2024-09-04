@@ -19,6 +19,7 @@ export class AppComponent implements OnInit {
   step = 1;
   numberGenerated = 0;
   mostrarMensaje: boolean = false;
+  amount = "";
 
   constructor(private route: ActivatedRoute) {}
 
@@ -27,8 +28,10 @@ export class AppComponent implements OnInit {
       this.name = params["name"];
       if (this.name === "javi") {
         this.mobile_number = environment.numberJavi;
+        this.amount = "40€";
       } else if (this.name === "adri") {
         this.mobile_number = environment.numberAdri;
+        this.amount = "25€";
       }
     });
   }

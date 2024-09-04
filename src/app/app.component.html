@@ -35,7 +35,9 @@
   </div>
   } @if (step === 2) {
   <div class="info">
-    <p>A continuación, debe realizar un bizum al número:</p>
+    <p>
+      A continuación, debe realizar un bizum por importe de <b>{{ amount }}</b> al número:
+    </p>
     <p class="mobile" (click)="copyText(mobile_number)">{{ mobile_number }}</p>
     <p>Poniendo en CONCEPTO su número personal generado:</p>
     <p class="generatedNumber" (click)="copyText(numberGenerated)">{{ numberGenerated }}</p>
