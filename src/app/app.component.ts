@@ -42,7 +42,7 @@ export class AppComponent implements OnInit {
     this.numberGenerated = numeroUnico < 100000 ? numeroUnico + 100000 : numeroUnico;
   }
 
-  copyText(text: number): void {
+  copyText(text: number | string): void {
     navigator.clipboard
       .writeText(text.toString())
       .then(() => {
