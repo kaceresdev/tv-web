@@ -2,7 +2,7 @@
   <h1 class="display-1">Compra lista TV</h1>
   @if (step == 1) {
   <div class="info">
-    <p>Para comprar una lista IPTV debe primeramente escriba su nombre y número de teléfono para generar un código personal:</p>
+    <p>Para comprar una lista IPTV debe primeramente escribir su nombre y número de teléfono para generar un código personal:</p>
     <div class="mb-3">
       <label for="name" class="form-label">Nombre</label>
       <input
@@ -35,13 +35,13 @@
   </div>
   } @if (step === 2) {
   <div class="info">
-    <p>A continuación debe realizar un bizum al número:</p>
+    <p>A continuación, debe realizar un bizum al número:</p>
     <p class="mobile">{{ mobile_number }}</p>
     <p>Poniendo en CONCEPTO su número personal generado:</p>
     <p class="generatedNumber" (click)="copyText(numberGenerated)">{{ numberGenerated }}</p>
     <small>*Puede pulsar sobre el número para copiarlo directamente</small>
     <br />
-    <p>Cuando lo haya realizado pulse el siguiente botón:</p>
+    <p>Cuando haya realizado el pago pulse el siguiente botón:</p>
     <button type="button" class="btn btn-success" (click)="nextStep()">Hecho</button>
   </div>
   } @if (step === 3) {
@@ -49,7 +49,7 @@
     <p class="h5">Todo listo {{ name_client }}!</p>
     <img src="assets/imgs/done.svg" alt="Done" />
     <p>Estamos comprobando su pago.</p>
-    <p>Nos pondremos en contacto con usted en un máximo de 24h a través de whatsapp con el número que nos ha facilitado:</p>
+    <p>Nos pondremos en contacto con usted en un máximo de 24h a través del número de whatsapp que nos ha facilitado:</p>
     <p class="mobile">{{ mobile_client }}</p>
   </div>
   }
