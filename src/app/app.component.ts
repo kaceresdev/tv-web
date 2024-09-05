@@ -24,6 +24,7 @@ export class AppComponent implements OnInit {
   numberGenerated = 0;
   mostrarMensaje: boolean = false;
   amount = "";
+  disabledBtnFinish = true;
 
   isLoading = false;
   isEmailKO = false;
@@ -49,6 +50,9 @@ export class AppComponent implements OnInit {
     const timestampUltimos6Digitos = timestamp % 1000000;
     const numeroUnico = (numeroAleatorio + timestampUltimos6Digitos) % 1000000;
     this.step++;
+    setTimeout(() => {
+      this.disabledBtnFinish = false;
+    }, 20000);
     this.numberGenerated = numeroUnico < 100000 ? numeroUnico + 100000 : numeroUnico;
   }
 
