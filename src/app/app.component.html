@@ -56,4 +56,6 @@
   </div>
   }
   <div class="floatingMessage" *ngIf="mostrarMensaje">Copiado correctamente</div>
+  <app-modal *ngIf="isEmailKO" [mobile]="mobile_number"></app-modal>
 </div>
+<app-loader *ngIf="isLoading"></app-loader>

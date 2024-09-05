@@ -3,11 +3,15 @@ import { CommonModule } from "@angular/common";
 import { ActivatedRoute, RouterOutlet } from "@angular/router";
 import { environment } from "../environments/environment";
 import { FormsModule } from "@angular/forms";
+import { EmailService } from "./services/email/email.service";
+import { LoaderComponent } from "./shared/loader/loader.component";
+import { HttpClientModule } from "@angular/common/http";
+import { ModalComponent } from "./shared/modal/modal.component";
 
 @Component({
   selector: "app-root",
   standalone: true,
-  imports: [CommonModule, RouterOutlet, FormsModule],
+  imports: [CommonModule, RouterOutlet, FormsModule, LoaderComponent, ModalComponent, HttpClientModule],
   templateUrl: "./app.component.html",
   styleUrls: ["./app.component.scss"],
 })
@@ -21,7 +25,10 @@ export class AppComponent implements OnInit {
   mostrarMensaje: boolean = false;
   amount = "";
 
-  constructor(private route: ActivatedRoute) {}
+  isLoading = false;
+  isEmailKO = false;
+
+  constructor(private route: ActivatedRoute, private emailService: EmailService) {}
 
   ngOnInit(): void {
     this.route.queryParams.subscribe((params) => {
@@ -60,6 +67,22 @@ export class AppComponent implements OnInit {
   }
 
   nextStep() {
-    this.step++;
+    this.isLoading = true;
+    this.isEmailKO = false;
+    this.emailService.sendEmail(this.name, this.name_client, this.mobile_client, this.numberGenerated).subscribe({
+      next: (resp) => {
+        this.isLoading = false;
+        console.log("Email sent ", resp);
+        this.step++;
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.isEmailKO = true;
+        console.error("An error occurred :", err);
+      },
+      complete: () => {
+        console.log("There are no more action happen.");
+      },
+    });
   }
 }
