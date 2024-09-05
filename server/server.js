@@ -30,9 +30,9 @@ app.post("/send-email", (req, res) => {
     subject: `[${name}] - ${code}`,
     text: `
       Datos de cliente:
+        Code: ${code}
         Nombre: ${name_client}
         Whatsapp: ${mobile_client}
-        Code: ${code}
     `,
   };
 
