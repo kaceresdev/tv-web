@@ -52,7 +52,7 @@ export class AppComponent implements OnInit {
     this.step++;
     setTimeout(() => {
       this.disabledBtnFinish = false;
-    }, 20000);
+    }, 5000);
     this.numberGenerated = numeroUnico < 100000 ? numeroUnico + 100000 : numeroUnico;
   }
 
