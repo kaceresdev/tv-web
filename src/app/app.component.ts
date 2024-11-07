@@ -38,7 +38,7 @@ export class AppComponent implements OnInit {
         this.amount = "40€";
       } else if (this.name === "adri") {
         this.mobile_number = environment.numberAdri;
-        this.amount = "25€";
+        this.amount = "35€";
       }
     });
   }
