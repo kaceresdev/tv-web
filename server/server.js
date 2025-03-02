@@ -107,7 +107,7 @@ async function resolverCaptcha(siteKey, pageUrl) {
 }
 
 async function loginYExtraerDatos(username, password) {
-  const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
   await page.goto(LOGIN_URL);
 
