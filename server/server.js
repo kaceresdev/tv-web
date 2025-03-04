@@ -4,15 +4,17 @@ const cors = require("cors");
 const nodemailer = require("nodemailer");
 const functions = require("firebase-functions");
 const axios = require("axios");
-// const puppeteer = require("puppeteer");
-const puppeteer = require("puppeteer-core");
+const puppeteer = require("puppeteer");
+const puppeteerCore = require("puppeteer-core");
 const chrome = require("chrome-aws-lambda");
+const config = require("./environment");
 
 const app = express();
 const port = 8443;
 
-const API_KEY_2CAPTCHA = "159fc4b57ab1078d28790eb9b1db75f0";
-const LOGIN_URL = "https://suptv.co/c4usm/login.php";
+const API_KEY_2CAPTCHA = config.apiKey2Captcha;
+const LOGIN_URL = config.loginUrl;
+const isLocal = config.isLocal;
 
 app.use(bodyParser.json());
 app.use(cors());
@@ -26,14 +28,14 @@ app.post("/send-email", (req, res) => {
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
-      user: "nodemailertvweb@gmail.com",
-      pass: "ammf oqai aqof qpof",
+      user: config.nodemailerUser,
+      pass: config.nodemailerPass,
     },
   });
 
   const mailOptions = {
-    from: "nodemailertvweb@gmail.com",
-    to: "nodemailertvweb@gmail.com",
+    from: config.nodemailerEmail,
+    to: config.nodemailerEmail,
     subject: `[${name}] - ${code}`,
     text: `
       Datos de cliente:
@@ -105,22 +107,26 @@ async function resolverCaptcha(siteKey, pageUrl) {
 }
 
 async function loginYExtraerDatos(username, password) {
-  // const browser = await puppeteer.launch({
-  //   headless: true,
-  //   args: [
-  //     "--disable-features=site-per-process", // Reduce el aislamiento de procesos
-  //     "--no-sandbox",
-  //     "--disable-setuid-sandbox", // Desactiva restricciones de seguridad (útil en servidores)
-  //     "--disable-dev-shm-usage", // Evita usar `/dev/shm` (útil en contenedores Docker)
-  //     "--disable-gpu", // Desactiva la GPU (en algunos sistemas acelera el rendimiento)
-  //     "--window-size=1920,1080", // Establece un tamaño de ventana grande
-  //   ],
-  // });
-  const browser = await puppeteer.launch({
-    headless: chrome.headless,
-    args: [...chrome.args, "--no-sandbox", "--disable-setuid-sandbox"],
-    executablePath: (await chrome.executablePath) || "/usr/bin/google-chrome-stable",
-  });
+  let browser;
+  if (isLocal) {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        "--disable-features=site-per-process", // Reduce el aislamiento de procesos
+        "--no-sandbox",
+        "--disable-setuid-sandbox", // Desactiva restricciones de seguridad (útil en servidores)
+        "--disable-dev-shm-usage", // Evita usar `/dev/shm` (útil en contenedores Docker)
+        "--disable-gpu", // Desactiva la GPU (en algunos sistemas acelera el rendimiento)
+        "--window-size=1920,1080", // Establece un tamaño de ventana grande
+      ],
+    });
+  } else {
+    browser = await puppeteerCore.launch({
+      headless: chrome.headless,
+      args: [...chrome.args, "--no-sandbox", "--disable-setuid-sandbox"],
+      executablePath: (await chrome.executablePath) || "/usr/bin/google-chrome-stable",
+    });
+  }
   const pages = await browser.pages();
   await Promise.all(pages.map((page) => page.close()));
   const page = await browser.newPage();
@@ -186,4 +192,4 @@ app.listen(port, () => {
   console.log(`Server listening at port ${port}`);
 });
 
-exports.app = functions.runWith({ memory: "512MB" }).https.onRequest(app);
+exports.app = functions.runWith({ memory: "512MB", timeoutSeconds: 300 }).https.onRequest(app);
