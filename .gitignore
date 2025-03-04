@@ -9,6 +9,7 @@
 # Node
 /node_modules
 server/node_modules
+server/environment.js
 npm-debug.log
 yarn-error.log
 src/environments
