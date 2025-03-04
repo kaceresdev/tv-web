@@ -3,8 +3,10 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const nodemailer = require("nodemailer");
 const functions = require("firebase-functions");
-const puppeteer = require("puppeteer");
 const axios = require("axios");
+// const puppeteer = require("puppeteer");
+const puppeteer = require("puppeteer-core");
+const chrome = require("chrome-aws-lambda");
 
 const app = express();
 const port = 8443;
@@ -103,16 +105,21 @@ async function resolverCaptcha(siteKey, pageUrl) {
 }
 
 async function loginYExtraerDatos(username, password) {
+  // const browser = await puppeteer.launch({
+  //   headless: true,
+  //   args: [
+  //     "--disable-features=site-per-process", // Reduce el aislamiento de procesos
+  //     "--no-sandbox",
+  //     "--disable-setuid-sandbox", // Desactiva restricciones de seguridad (útil en servidores)
+  //     "--disable-dev-shm-usage", // Evita usar `/dev/shm` (útil en contenedores Docker)
+  //     "--disable-gpu", // Desactiva la GPU (en algunos sistemas acelera el rendimiento)
+  //     "--window-size=1920,1080", // Establece un tamaño de ventana grande
+  //   ],
+  // });
   const browser = await puppeteer.launch({
-    headless: true,
-    args: [
-      "--disable-features=site-per-process", // Reduce el aislamiento de procesos
-      "--no-sandbox",
-      "--disable-setuid-sandbox", // Desactiva restricciones de seguridad (útil en servidores)
-      "--disable-dev-shm-usage", // Evita usar `/dev/shm` (útil en contenedores Docker)
-      "--disable-gpu", // Desactiva la GPU (en algunos sistemas acelera el rendimiento)
-      "--window-size=1920,1080", // Establece un tamaño de ventana grande
-    ],
+    headless: chrome.headless,
+    args: [...chrome.args, "--no-sandbox", "--disable-setuid-sandbox"],
+    executablePath: (await chrome.executablePath) || "/usr/bin/google-chrome-stable",
   });
   const pages = await browser.pages();
   await Promise.all(pages.map((page) => page.close()));
@@ -179,4 +186,4 @@ app.listen(port, () => {
   console.log(`Server listening at port ${port}`);
 });
 
-exports.app = functions.https.onRequest(app);
+exports.app = functions.runWith({ memory: "512MB" }).https.onRequest(app);
