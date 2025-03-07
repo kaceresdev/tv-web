@@ -11,9 +11,16 @@
   },
   "functions": [
     {
-      "source": "server",
+      "source": "functions",
       "runtime": "nodejs18",
-      "codebase": "default",
+      "codebases": {
+        "server": {
+          "source": "server"
+        },
+        "bot": {
+          "source": "bot"
+        }
+      },
       "ignore": ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"]
     }
   ]

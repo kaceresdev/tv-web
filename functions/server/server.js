@@ -7,7 +7,7 @@ const axios = require("axios");
 const puppeteer = require("puppeteer");
 const puppeteerCore = require("puppeteer-core");
 const chrome = require("chrome-aws-lambda");
-const config = require("./environment");
+const config = require("./variables");
 
 const app = express();
 const port = 8443;
@@ -51,9 +51,19 @@ app.post("/send-email", (req, res) => {
       res.status(500).send("Error sending email");
     } else {
       console.log("Email sent:", info.response);
+      // const response = await axios.get(`https://localhost:8444/telegram-bot`);
+      // console.log("Bot called: ", response);
       res.status(200).send("Email sent successfully");
     }
   });
+});
+
+app.post("/test", async (req, res) => {
+  const { name } = req.body;
+  const response = await axios.post(`https://us-central1-tvweb-6cf69.cloudfunctions.net/bot-app/telegram-bot`, { name: name });
+  console.log(response.data);
+
+  res.status(200).send(response.data);
 });
 
 app.post("/login", async (req, res) => {

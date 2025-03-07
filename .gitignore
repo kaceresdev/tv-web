@@ -8,8 +8,9 @@
 
 # Node
 /node_modules
-server/node_modules
-server/environment.js
+functions/server/node_modules
+functions/server/variables.js
+functions/bot/node_modules
 npm-debug.log
 yarn-error.log
 src/environments
