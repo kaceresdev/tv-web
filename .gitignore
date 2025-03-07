@@ -11,6 +11,7 @@
 functions/server/node_modules
 functions/server/variables.js
 functions/bot/node_modules
+functions/bot/variables.js
 npm-debug.log
 yarn-error.log
 src/environments
