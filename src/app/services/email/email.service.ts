@@ -11,13 +11,15 @@ export class EmailService {
 
   constructor(private http: HttpClient) {}
 
-  sendEmail(name: string, name_client: string, mobile_client: string, code: number): Observable<any> {
+  sendEmail(name: string, name_client: string, mobile_client: string, tivimate: boolean, code: number): Observable<any> {
     const data = {
       name: name.toUpperCase(),
       name_client: name_client,
       mobile_client: mobile_client,
+      tivimate: tivimate,
       code: code,
     };
+
     return this.http.post(this.emailUrl, data, { responseType: "text" });
   }
 }

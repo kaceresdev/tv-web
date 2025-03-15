@@ -8,6 +8,7 @@ import { LoaderComponent } from "./shared/loader/loader.component";
 import { HttpClientModule } from "@angular/common/http";
 import { ModalComponent } from "./shared/modal/modal.component";
 import { TelegramBotService } from "./services/telegram-bot/telegram-bot.service";
+import { CurrencyService } from "./services/currency/currency.service";
 
 @Component({
   selector: "app-root",
@@ -21,26 +22,35 @@ export class AppComponent implements OnInit {
   name = "";
   name_client = "";
   mobile_client = "";
+  tivimate = false;
   step = 1;
   numberGenerated = 0;
   mostrarMensaje: boolean = false;
-  amount = "";
+  amount = 0;
 
   isLoading = false;
   isEmailKO = false;
 
-  constructor(private route: ActivatedRoute, private emailService: EmailService, private telegramBotService: TelegramBotService) {}
+  constructor(
+    private route: ActivatedRoute,
+    private currencyService: CurrencyService,
+    private emailService: EmailService,
+    private telegramBotService: TelegramBotService
+  ) {}
 
   ngOnInit(): void {
     this.route.queryParams.subscribe((params) => {
       this.name = params["name"];
       if (this.name === "javi") {
         this.mobile_number = environment.numberJavi;
-        this.amount = "40€";
+        this.amount = 45;
       } else if (this.name === "adri") {
         this.mobile_number = environment.numberAdri;
-        this.amount = "35€";
+        this.amount = 40;
       }
+      this.currencyService.getExchangeRate(this.amount).subscribe((data) => {
+        this.amount = data.result;
+      });
     });
   }
 
@@ -71,7 +81,7 @@ export class AppComponent implements OnInit {
   nextStep() {
     this.isLoading = true;
     this.isEmailKO = false;
-    this.emailService.sendEmail(this.name, this.name_client, this.mobile_client, this.numberGenerated).subscribe({
+    this.emailService.sendEmail(this.name, this.name_client, this.mobile_client, this.tivimate, this.numberGenerated).subscribe({
       next: (resp) => {
         this.isLoading = false;
         console.log("Email sent ", resp);

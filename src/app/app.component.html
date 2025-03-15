@@ -29,6 +29,12 @@
       />
       <small>*Número de móvil resgistrado en whatsapp para contactarle más adelante</small>
     </div>
+    <div class="mb-3 form-check">
+      <input type="checkbox" class="form-check-input" id="tivimate" [(ngModel)]="tivimate" />
+      <label class="form-check-label" for="tivimate"
+        >Marcar si necesitas una cuenta de <a href="https://tivimate.com/" target="_blank">Tivimate Premium</a> de por vida (+10€)</label
+      >
+    </div>
     <button type="button" class="btn btn-primary" [disabled]="!nameClientModel.valid || !mobileClientModel.valid" (click)="randomNumberGen()">
       Generar Código Personal
     </button>
@@ -36,7 +42,7 @@
   } @if (step === 2) {
   <div class="info">
     <p>
-      A continuación, debe realizar un bizum por importe de <b>{{ amount }}</b> al número:
+      A continuación, debe realizar un bizum por importe de <b>{{ (tivimate ? amount + 10 : amount) | number : "1.2-2" }}€</b> al número:
     </p>
     <p class="mobile" (click)="copyText(mobile_number)">{{ mobile_number }}</p>
     <p>Poniendo en CONCEPTO su número personal generado:</p>

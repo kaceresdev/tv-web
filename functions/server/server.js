@@ -27,6 +27,7 @@ app.post("/send-email", (req, res) => {
   const name_client = req.body.name_client;
   const mobile_client = req.body.mobile_client;
   const code = req.body.code;
+  const tivimate = req.body.tivimate;
 
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -45,6 +46,7 @@ app.post("/send-email", (req, res) => {
         Code: ${code}
         Nombre: ${name_client}
         Whatsapp: ${mobile_client}
+        Tivimate: ${tivimate ? "Si" : "No"}
     `,
   };
 
