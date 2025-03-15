@@ -1,89 +1,185 @@
-const TelegramBot = require("node-telegram-bot-api");
-const axios = require("axios");
 const express = require("express");
-const functions = require("firebase-functions");
 const bodyParser = require("body-parser");
-const cors = require("cors");
+const fetch = require("node-fetch");
+const axios = require("axios");
+const functions = require("firebase-functions");
 const config = require("./variables");
 
+// Configura el servidor
 const app = express();
 const port = 8444;
 
+const isLocal = config.isLocal;
+
+// Configuración del bot de Telegram
 const TOKEN = config.botToken;
+const telegramApiUrl = config.telegramApiUrl + TOKEN;
+const webhookUrl = isLocal ? config.localWebhookUrl : config.webhookUrl;
 const CHAT_ID = config.telegramChatID;
-const bot = new TelegramBot(TOKEN, { polling: true });
+
+const previousMessages = new Set();
 
 app.use(bodyParser.json());
-app.use(cors());
 
-app.post("/telegram-bot", (req, res) => {
-  console.log("REQ: ", req.body);
+app.post("/telegram-bot", async (req, res) => {
+  console.log(`🟡 Pedido ${req.body.code} recibido`);
+  initialBtns(req.body.name, req.body.code, req.body.mobile);
 
-  const nombre = "javi";
+  res.status(200).send("Bot request received");
+});
 
-  const opciones = {
+app.post("/telegram-bot-credits", async (req, res) => {
+  console.log(`🟡 Créditos restantes...`);
+  botSendMessage(`⚠️ Créditos restantes: *${req.body.credits}* ⚠️`);
+
+  res.status(200).send(req.body.credits);
+});
+
+// Configura el Webhook
+app.post("/webhook", async (req, res) => {
+  // Si el mensaje es /start, enviar un mensaje con botones
+  if (req.body.message?.text.startsWith("/start")) {
+    const messageId = req.body.message.message_id;
+
+    if (previousMessages.has(messageId)) {
+      console.log("Mensaje duplicado detectado");
+      return res.sendStatus(200); // Ignorar mensajes duplicados
+    }
+
+    previousMessages.add(messageId);
+    botSendMessage("✅ ¡Listo para empezar a gestionar tus pedidos!");
+  } else if (req.body.callback_query) {
+    const callback_query = req.body.callback_query;
+    const messageId = callback_query.message.message_id;
+    const [action, name, code, mobile] = callback_query.data.split("_");
+
+    if (previousMessages.has(callback_query.data)) {
+      console.log("Acción duplicada detectada");
+      return res.sendStatus(200); // Ignorar acciones duplicadas
+    }
+
+    if (action == "accept") {
+      optionsBtns(name, code, mobile, messageId);
+    } else if (action == "reject") {
+      console.log(`❌ Pedido ${code} rechazado`);
+      botEditMessage(`📝 Pedido *${code}*, a nombre de *${name}* y con numero de teléfono *${mobile}* recibido`, messageId);
+      botSendMessage(`❌ Pedido *${code}* rechazado`);
+    } else if (action == "back") {
+      initialBtns(name, code, mobile, true, messageId);
+    } else {
+      previousMessages.add(callback_query.data);
+
+      botEditMessage(`📝 Pedido *${code}*, a nombre de *${name}* y con numero de teléfono *${mobile}* recibido`, messageId);
+      botSendMessage(`💬 Procesando el pedido *${code}* de *${action}*...`);
+
+      try {
+        console.log(`🟡 Pedido ${code} de ${action} en curso...`);
+        const url = isLocal ? config.localUrlServer : config.urlServer;
+        const response = await axios.post(url + `/getCredits`, { client_name: name, action });
+        console.log(`✅ Pedido ${code} procesado. `, response.data.message);
+        previousMessages.delete(callback_query.data);
+        botSendMessage(`✅ *${code}* \n${response.data.message}`);
+      } catch (error) {
+        console.log(`❌ Pedido ${code} NO procesado. `, error);
+        botSendMessage(`❌ Error al obtener los códigos del pedido *${code}* ❌ `);
+      }
+    }
+  }
+
+  res.sendStatus(200);
+});
+
+// Configurar el Webhook en Telegram
+const setWebhook = async () => {
+  const response = await fetch(`${telegramApiUrl}/setWebhook?url=${webhookUrl}`);
+  const data = await response.json();
+  console.log("Webhook set:", data);
+};
+
+const initialBtns = async (name, code, mobile, editar = false, messageId = null) => {
+  const initialOpts = {
     reply_markup: {
       inline_keyboard: [
         [
-          { text: "Aceptar", callback_data: `aceptar_${nombre}` },
-          { text: "Rechazar", callback_data: `rechazar_${nombre}` },
+          { text: "✅ Aceptar", callback_data: `accept_${name}_${code}_${mobile}` },
+          { text: "❌ Rechazar", callback_data: `reject_${name}_${code}_${mobile}` },
         ],
       ],
     },
   };
 
-  bot.sendMessage(CHAT_ID, `¿Aceptar o rechazar el nombre?`, opciones);
-  res.status(200).send("Bot message sent");
-});
-
-// bot.onText(/\/start/, (msg) => {
-//   bot.sendMessage(msg.chat.id, "Envíame un nombre para procesarlo.");
-// });
-
-// Recibir el nombre y enviar botones
-// bot.on("message", (msg) => {
-//   const chatId = msg.chat.id;
-//   const nombre = msg.text;
-
-//   console.log(chatId);
-
-//   if (nombre.startsWith("/")) return; // Ignorar comandos
-
-//   const opciones = {
-//     reply_markup: {
-//       inline_keyboard: [
-//         [
-//           { text: "Aceptar", callback_data: `aceptar_${nombre}` },
-//           { text: "Rechazar", callback_data: `rechazar_${nombre}` },
-//         ],
-//       ],
-//     },
-//   };
-
-//   bot.sendMessage(chatId, `¿Aceptar o rechazar el nombre: ${nombre}?`, opciones);
-// });
-
-// Manejo de botones
-bot.on("callback_query", async (query) => {
-  const chatId = query.message.chat.id;
-  const [accion, nombre] = query.data.split("_");
-
-  if (accion === "aceptar") {
-    const URL = `https://tudominio.com/api/procesar?nombre=${encodeURIComponent(nombre)}`;
-
-    try {
-      await axios.get(URL);
-      bot.sendMessage(chatId, `✅ Nombre "${nombre}" aceptado y enviado a la URL.`);
-    } catch (error) {
-      bot.sendMessage(chatId, `❌ Error al enviar el nombre "${nombre}".`);
-    }
+  if (editar && messageId) {
+    botEditMessage(`📝 Pedido *${code}*, a nombre de *${name}* y con numero de teléfono *${mobile}* recibido`, messageId, initialOpts.reply_markup);
   } else {
-    bot.sendMessage(chatId, `❌ Nombre "${nombre}" rechazado.`);
+    botSendMessage(`📝 Pedido *${code}*, a nombre de *${name}* y con numero de teléfono *${mobile}* recibido`, initialOpts.reply_markup);
   }
-});
+};
 
-app.listen(port, () => {
-  console.log(`Server listening at port ${port}`);
-});
+const optionsBtns = async (name, code, mobile, messageId) => {
+  const periodOpts = {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "12h", callback_data: `12h_${name}_${code}_${mobile}` }],
+        [{ text: "24h", callback_data: `24h_${name}_${code}_${mobile}` }],
+        [{ text: "3 meses", callback_data: `3m_${name}_${code}_${mobile}` }],
+        [{ text: "6 meses", callback_data: `6m_${name}_${code}_${mobile}` }],
+        [{ text: "12 meses", callback_data: `12m_${name}_${code}_${mobile}` }],
+        [{ text: "Atrás", callback_data: `back_${name}_${code}_${mobile}` }],
+      ],
+    },
+  };
 
-exports.app = functions.runWith({ memory: "512MB", timeoutSeconds: 300 }).https.onRequest(app);
+  botEditMessage(`📝 Pedido *${code}*, a nombre de *${name}* y con numero de teléfono *${mobile}* recibido`, messageId, periodOpts.reply_markup);
+};
+
+const botSendMessage = async (text, reply_markup = { inline_keyboard: [] }) => {
+  try {
+    const response = await fetch(`${telegramApiUrl}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        text: escapeMarkdownV2(text),
+        reply_markup: reply_markup,
+        parse_mode: "MarkdownV2",
+      }),
+    });
+  } catch (err) {
+    console.log("ERROR send message telegram: ", err);
+  }
+};
+
+const botEditMessage = async (text, messageId, reply_markup = { inline_keyboard: [] }) => {
+  try {
+    await fetch(`${telegramApiUrl}/editMessageText`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        message_id: messageId,
+        reply_markup: reply_markup,
+        text: escapeMarkdownV2(text),
+        parse_mode: "MarkdownV2",
+      }),
+    });
+  } catch (err) {
+    console.log("ERROR edit message telegram: ", err);
+  }
+};
+
+function escapeMarkdownV2(text) {
+  return text.replace(/([_\[\]()~`>#+\-=|{}.!])/g, "\\$1");
+}
+
+if (isLocal) {
+  // Init server and configure webhook
+  app.listen(port, () => {
+    console.log(`Server listening at port ${port}`);
+    setWebhook();
+  });
+} else {
+  //  Configure webhook
+  setWebhook();
+}
+
+exports.app = functions.https.onRequest(app);

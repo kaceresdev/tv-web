@@ -7,11 +7,12 @@ import { EmailService } from "./services/email/email.service";
 import { LoaderComponent } from "./shared/loader/loader.component";
 import { HttpClientModule } from "@angular/common/http";
 import { ModalComponent } from "./shared/modal/modal.component";
+import { TelegramBotService } from "./services/telegram-bot/telegram-bot.service";
 
 @Component({
   selector: "app-root",
   standalone: true,
-  imports: [CommonModule, RouterOutlet, FormsModule, LoaderComponent, ModalComponent, HttpClientModule],
+  imports: [CommonModule, FormsModule, LoaderComponent, ModalComponent, HttpClientModule],
   templateUrl: "./app.component.html",
   styleUrls: ["./app.component.scss"],
 })
@@ -28,7 +29,7 @@ export class AppComponent implements OnInit {
   isLoading = false;
   isEmailKO = false;
 
-  constructor(private route: ActivatedRoute, private emailService: EmailService) {}
+  constructor(private route: ActivatedRoute, private emailService: EmailService, private telegramBotService: TelegramBotService) {}
 
   ngOnInit(): void {
     this.route.queryParams.subscribe((params) => {
@@ -79,6 +80,17 @@ export class AppComponent implements OnInit {
       error: (err) => {
         this.isLoading = false;
         this.isEmailKO = true;
+        console.error("An error occurred :", err);
+      },
+      complete: () => {
+        console.log("There are no more action happen.");
+      },
+    });
+    this.telegramBotService.sendToTelegram(this.name_client, this.mobile_client, this.numberGenerated).subscribe({
+      next: (resp) => {
+        console.log("Telegram message sent ", resp);
+      },
+      error: (err) => {
         console.error("An error occurred :", err);
       },
       complete: () => {

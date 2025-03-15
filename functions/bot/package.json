@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node bot.js",
+    "start-webhook": "ngrok http --domain=emu-settling-toad.ngrok-free.app 8444 --host-header='localhost:8444'",
     "deploy": "firebase deploy --only functions"
   },
   "keywords": [],

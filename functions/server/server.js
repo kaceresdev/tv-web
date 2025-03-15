@@ -12,9 +12,12 @@ const config = require("./variables");
 const app = express();
 const port = 8443;
 
+const isLocal = config.isLocal;
+
 const API_KEY_2CAPTCHA = config.apiKey2Captcha;
 const LOGIN_URL = config.loginUrl;
-const isLocal = config.isLocal;
+const USERNAME_WEB = config.usernameWeb;
+const PASSWORD_WEB = config.passwordWeb;
 
 app.use(bodyParser.json());
 app.use(cors());
@@ -51,30 +54,46 @@ app.post("/send-email", (req, res) => {
       res.status(500).send("Error sending email");
     } else {
       console.log("Email sent:", info.response);
-      // const response = await axios.get(`https://localhost:8444/telegram-bot`);
-      // console.log("Bot called: ", response);
       res.status(200).send("Email sent successfully");
     }
   });
 });
 
-app.post("/test", async (req, res) => {
-  const { name } = req.body;
-  const response = await axios.post(`https://us-central1-tvweb-6cf69.cloudfunctions.net/bot-app/telegram-bot`, { name: name });
-  console.log(response.data);
+app.post("/bot", async (req, res) => {
+  const { name_client, mobile_client, code } = req.body;
+
+  const url = isLocal ? config.localUrlServerTelegramBot : config.urlServerTelegramBot;
+  const response = await axios.post(url + `/telegram-bot`, {
+    name: name_client,
+    mobile: mobile_client,
+    code,
+  });
 
   res.status(200).send(response.data);
 });
 
-app.post("/login", async (req, res) => {
-  const { username, password } = req.body;
+app.post("/getCredits", async (req, res) => {
+  const { client_name, action } = req.body;
+  let period = "";
 
-  if (!username || !password) {
-    return res.status(400).json({ error: "Faltan usuario o contraseña" });
+  switch (action) {
+    case "3m":
+      period = "3mois";
+      break;
+    case "6m":
+      period = "6mois";
+      break;
+    case "12m":
+      period = "12mois";
+      break;
+
+    default:
+      period = action;
+      break;
   }
 
   try {
-    const data = await loginYExtraerDatos(username, password);
+    const data = await loginYExtraerDatos(USERNAME_WEB, PASSWORD_WEB, client_name, period);
     res.json(data);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -99,16 +118,18 @@ async function resolverCaptcha(siteKey, pageUrl) {
 
   // Esperar y hacer múltiples intentos para obtener la solución
   for (let i = 0; i < 10; i++) {
-    // 10 intentos (50 segundos en total)
-    await new Promise((resolve) => setTimeout(resolve, 30000)); // Espera 1 minuto
+    await new Promise((resolve) => setTimeout(resolve, 30000));
 
-    const result = await axios.get(`http://2captcha.com/res.php?key=${API_KEY_2CAPTCHA}&action=get&id=${captchaId}&json=1`);
-
-    if (result.data.status === 1) {
-      console.log("✅ CAPTCHA resuelto:", result.data.request);
-      return result.data.request;
+    try {
+      const result = await axios.get(`http://2captcha.com/res.php?key=${API_KEY_2CAPTCHA}&action=get&id=${captchaId}&json=1`);
+      if (result.data.status === 1) {
+        console.log("✅ CAPTCHA resuelto:", result.data.request);
+        return result.data.request;
+      }
+    } catch (error) {
+      console.error("❌ Error al evaluar el CAPTCHA: ", error);
+      return null;
     }
-
     console.log(`🔄 Intento ${i + 1}: CAPTCHA aún no está listo...`);
   }
 
@@ -116,7 +137,7 @@ async function resolverCaptcha(siteKey, pageUrl) {
   return null;
 }
 
-async function loginYExtraerDatos(username, password) {
+async function loginYExtraerDatos(username, password, client_name, period) {
   let browser;
   if (isLocal) {
     browser = await puppeteer.launch({
@@ -180,26 +201,69 @@ async function loginYExtraerDatos(username, password) {
 
   console.log("🟡 Haciendo login...");
   await page.click('button[type="submit"]');
-  // await page.waitForNavigation();
-  await new Promise((resolve) => setTimeout(resolve, 10000));
+  await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  // console.log("🟡 Haciendo clic en un botón...");
-  // await page.click("#botonImportante");
-  // await page.waitForTimeout(2000);
+  console.log("🟡 Navegando...");
+  await page.click("#sidebar > li:nth-child(2) > a");
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+
+  console.log("🟡 Introduciendo datos de la lista...");
+  await page.type("#main > div.full_w > form > table > tbody > tr:nth-child(1) > td:nth-child(2) > input", client_name);
+  await page.select("#main > div.full_w > form > table > tbody > tr:nth-child(4) > td.small > span > select", period);
+
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+
+  console.log("🟡 Añadiendo lista...");
+  await page.click('input[type="submit"]');
+
+  await new Promise((resolve) => setTimeout(resolve, 2000));
 
   console.log("🟡 Extrayendo datos...");
-  const datos = await page.evaluate(() => {
+  const url = page.url();
+  const hash = new URL(url).hash;
+  const hashValue = hash.replace("#z", "");
+
+  const codes = await page.evaluate((hash) => {
+    const selector = `#zcon${hash} > p`;
+    const contentElement = document.querySelector(selector);
+    return contentElement ? contentElement.innerText : null;
+  }, hashValue);
+
+  console.log("🟡 Extrayendo créditos...");
+  const credits = await page.evaluate(() => {
     const preElement = document.querySelector("#top > div.left > pre");
     return preElement ? preElement.innerText : null;
   });
 
-  console.log("✅ Datos extraídos:", datos);
   await browser.close();
-  return { success: datos ? true : false, message: datos };
+
+  const numCredits = credits.match(/CREDIT LEFT\s*:\s*(\d+)/)[1];
+
+  if (parseInt(numCredits) < 24) {
+    try {
+      const url = isLocal ? config.localUrlServerTelegramBot : config.urlServerTelegramBot;
+      await axios.post(url + `/telegram-bot-credits`, {
+        numCredits,
+      });
+      console.log("✅ Créditos restantes enviados");
+    } catch (error) {
+      console.error("❌ Error al enviar créditos restantes.");
+    }
+  }
+
+  if (codes) {
+    console.log("✅ Datos extraídos: \n", codes);
+    return { success: true, message: codes };
+  } else {
+    console.error("❌ No se pudieron extraer los datos.");
+    return { success: false, message: "No se pudieron extraer los datos" };
+  }
 }
 
-app.listen(port, () => {
-  console.log(`Server listening at port ${port}`);
-});
+if (isLocal) {
+  app.listen(port, () => {
+    console.log(`Server listening at port ${port}`);
+  });
+}
 
 exports.app = functions.runWith({ memory: "512MB", timeoutSeconds: 300 }).https.onRequest(app);
