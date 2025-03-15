@@ -48,9 +48,6 @@ export class AppComponent implements OnInit {
         this.mobile_number = environment.numberAdri;
         this.amount = 40;
       }
-      this.currencyService.getExchangeRate(this.amount).subscribe((data) => {
-        this.amount = data.result;
-      });
     });
   }
 
@@ -59,6 +56,9 @@ export class AppComponent implements OnInit {
     const timestamp = Date.now();
     const timestampUltimos6Digitos = timestamp % 1000000;
     const numeroUnico = (numeroAleatorio + timestampUltimos6Digitos) % 1000000;
+    this.currencyService.getExchangeRate(this.amount).subscribe((data) => {
+      this.amount = data.result;
+    });
     this.step++;
     setTimeout(() => {}, 5000);
     this.numberGenerated = numeroUnico < 100000 ? numeroUnico + 100000 : numeroUnico;
