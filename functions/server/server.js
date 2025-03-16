@@ -22,12 +22,13 @@ const PASSWORD_WEB = config.passwordWeb;
 app.use(bodyParser.json());
 app.use(cors());
 
+// ** ENDPOINTS **
+
+/**
+ * Endpoint enviar email de pedido
+ */
 app.post("/send-email", (req, res) => {
-  const name = req.body.name;
-  const name_client = req.body.name_client;
-  const mobile_client = req.body.mobile_client;
-  const code = req.body.code;
-  const tivimate = req.body.tivimate;
+  const { name, name_client, mobile_client, code, tivimate } = req.body;
 
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -61,6 +62,9 @@ app.post("/send-email", (req, res) => {
   });
 });
 
+/**
+ * Endpoint para avisar al bot de telegram que existe un pedido
+ */
 app.post("/bot", async (req, res) => {
   const { name_client, mobile_client, code } = req.body;
 
@@ -74,15 +78,21 @@ app.post("/bot", async (req, res) => {
   res.status(200).send(response.data);
 });
 
+/**
+ * Endpoint para obtener los créditos
+ */
 app.post("/getCredits", async (req, res) => {
   try {
-    const data = await loginCredits(USERNAME_WEB, PASSWORD_WEB);
+    const data = await getCredits(USERNAME_WEB, PASSWORD_WEB);
     res.json(data);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
+/**
+ * Endpoint para obtener los códigos
+ */
 app.post("/getCodes", async (req, res) => {
   const { client_name, action } = req.body;
   let period = "";
@@ -104,13 +114,21 @@ app.post("/getCodes", async (req, res) => {
   }
 
   try {
-    const data = await loginCodes(USERNAME_WEB, PASSWORD_WEB, client_name, period);
+    const data = await getCodes(USERNAME_WEB, PASSWORD_WEB, client_name, period);
     res.json(data);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// ** FUNCTIONS **
+
+/**
+ * Función que resuelve un captcha
+ * @param {*} siteKey clave del captcha a resolver
+ * @param {*} pageUrl url de dónde se encuentra el captcha
+ * @returns
+ */
 async function resolverCaptcha(siteKey, pageUrl) {
   console.log("🟡 Enviando CAPTCHA a 2Captcha...");
 
@@ -148,7 +166,13 @@ async function resolverCaptcha(siteKey, pageUrl) {
   return null;
 }
 
-async function loginCredits(username, password) {
+/**
+ * Función que realiza login en la URL de login
+ * @param {*} username usuario del login
+ * @param {*} password contraseña del login
+ * return {page, browser}
+ */
+async function login(username, password) {
   let browser;
   if (isLocal) {
     browser = await puppeteer.launch({
@@ -213,6 +237,18 @@ async function loginCredits(username, password) {
   console.log("🟡 Haciendo login...");
   await page.click('button[type="submit"]');
   await new Promise((resolve) => setTimeout(resolve, 5000));
+
+  return { page, browser };
+}
+
+/**
+ * Función que recupera los créditos restantes
+ * @param {*} username usuario de la url de login
+ * @param {*} password contraseña de la url de login
+ * @returns {succes, message}
+ */
+async function getCredits(username, password) {
+  const { page, browser } = await login(username, password);
 
   console.log("🟡 Extrayendo créditos...");
   const credits = await page.evaluate(() => {
@@ -231,71 +267,13 @@ async function loginCredits(username, password) {
   }
 }
 
-async function loginCodes(username, password, client_name, period) {
-  let browser;
-  if (isLocal) {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        "--disable-features=site-per-process", // Reduce el aislamiento de procesos
-        "--no-sandbox",
-        "--disable-setuid-sandbox", // Desactiva restricciones de seguridad (útil en servidores)
-        "--disable-dev-shm-usage", // Evita usar `/dev/shm` (útil en contenedores Docker)
-        "--disable-gpu", // Desactiva la GPU (en algunos sistemas acelera el rendimiento)
-        "--window-size=1920,1080", // Establece un tamaño de ventana grande
-      ],
-    });
-  } else {
-    browser = await puppeteerCore.launch({
-      headless: chrome.headless,
-      args: [...chrome.args, "--no-sandbox", "--disable-setuid-sandbox"],
-      executablePath: (await chrome.executablePath) || "/usr/bin/google-chrome-stable",
-    });
-  }
-  const pages = await browser.pages();
-  await Promise.all(pages.map((page) => page.close()));
-  const page = await browser.newPage();
-  await page.setRequestInterception(true);
-  page.on("request", (request) => {
-    if (["image", "stylesheet", "font"].includes(request.resourceType())) {
-      request.abort(); // ❌ Bloquear carga innecesaria
-    } else {
-      request.continue();
-    }
-  });
-  await page.goto(LOGIN_URL);
-
-  console.log("🟡 Ingresando usuario y contraseña...");
-  await page.type('input[name="username"]', username);
-  await page.type('input[name="password"]', password);
-
-  console.log("🟡 Detectando CAPTCHA...");
-  const siteKey = await page.evaluate(() => {
-    const captchaElement = document.querySelector(".g-recaptcha");
-    return captchaElement ? captchaElement.getAttribute("data-sitekey") : null;
-  });
-
-  if (siteKey) {
-    console.log("🔹 SiteKey encontrada:", siteKey);
-    const captchaToken = await resolverCaptcha(siteKey, LOGIN_URL);
-    if (captchaToken) {
-      await page.evaluate((token) => {
-        document.querySelector("#g-recaptcha-response").innerText = token;
-      }, captchaToken);
-    } else {
-      console.error("❌ No se pudo resolver el CAPTCHA.");
-      await browser.close();
-      return { success: false, message: "No se pudo resolver el CAPTCHA" };
-    }
-  } else {
-    console.log("❌ No se detectó CAPTCHA.");
-    await browser.close();
-    return { success: false, message: "No se detectó CAPTCHA" };
-  }
-
-  console.log("🟡 Haciendo login...");
-  await page.click('button[type="submit"]');
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+/**
+ * Función que recupera los códigos de la lista
+ * @param {*} username usuario de la url de login
+ * @param {*} password contraseña de la url de login
+ */
+async function getCodes(username, password, client_name, period) {
+  const { page, browser } = await login(username, password);
 
   console.log("🟡 Navegando...");
   await page.click("#sidebar > li:nth-child(2) > a");
@@ -336,7 +314,7 @@ async function loginCodes(username, password, client_name, period) {
   if (parseInt(numCredits) < 24) {
     try {
       const url = isLocal ? config.localUrlServerTelegramBot : config.urlServerTelegramBot;
-      await axios.post(url + `/telegram-bot-credits`, {
+      await axios.post(url + `/bot-warning-credits`, {
         numCredits,
       });
       console.log("✅ Créditos restantes enviados");
@@ -353,6 +331,8 @@ async function loginCodes(username, password, client_name, period) {
     return { success: false, message: "No se pudieron extraer los datos" };
   }
 }
+
+// ** Arranque del servidor **
 
 if (isLocal) {
   app.listen(port, () => {

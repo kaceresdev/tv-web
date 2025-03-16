@@ -21,6 +21,11 @@ const previousMessages = new Set();
 
 app.use(bodyParser.json());
 
+// ** ENDPOINTS **
+
+/**
+ * Endpoint que recibe un pedido para que lo pinte el bot
+ */
 app.post("/telegram-bot", async (req, res) => {
   console.log(`🟡 Pedido ${req.body.code} recibido`);
   initialBtns(req.body.name, req.body.code, req.body.mobile);
@@ -28,18 +33,22 @@ app.post("/telegram-bot", async (req, res) => {
   res.status(200).send("Bot request received");
 });
 
-app.post("/telegram-bot-credits", async (req, res) => {
+/**
+ * Endpoint que recibe créditos restantes escasos para que lo pinte el bot
+ */
+app.post("/bot-warning-credits", async (req, res) => {
   console.log(`🟡 Créditos restantes...`);
   botSendMessage(`⚠️ Créditos restantes: *${req.body.credits}* ⚠️`);
 
   res.status(200).send(req.body.credits);
 });
 
-// Configura el Webhook
+/**
+ * Webhook de telegram que recibe las instrucciones del bot
+ */
 app.post("/webhook", async (req, res) => {
   res.sendStatus(200); // Contestamos a telegram inmediatamente para que no haga reenvios del mensaje
 
-  // Si el mensaje es /start, enviar un mensaje con botones
   if (req.body.message?.text.startsWith("/start")) {
     const messageId = req.body.message.message_id;
 
@@ -108,12 +117,7 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-// Configurar el Webhook en Telegram
-const setWebhook = async () => {
-  const response = await fetch(`${telegramApiUrl}/setWebhook?url=${webhookUrl}`);
-  const data = await response.json();
-  console.log("Webhook set:", data);
-};
+// ** FUNCTIONS **
 
 const initialBtns = async (name, code, mobile, editar = false, messageId = null) => {
   const initialOpts = {
@@ -189,6 +193,14 @@ const botEditMessage = async (text, messageId, reply_markup = { inline_keyboard:
 function escapeMarkdownV2(text) {
   return text.replace(/([_\[\]()~`>#+\-=|{}.!])/g, "\\$1");
 }
+
+// ** Arranque del servidor y del webhook **
+
+const setWebhook = async () => {
+  const response = await fetch(`${telegramApiUrl}/setWebhook?url=${webhookUrl}`);
+  const data = await response.json();
+  console.log("Webhook set:", data);
+};
 
 if (isLocal) {
   // Init server and configure webhook
