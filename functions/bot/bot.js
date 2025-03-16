@@ -37,6 +37,8 @@ app.post("/telegram-bot-credits", async (req, res) => {
 
 // Configura el Webhook
 app.post("/webhook", async (req, res) => {
+  res.sendStatus(200); // Contestamos a telegram inmediatamente para que no haga reenvios del mensaje
+
   // Si el mensaje es /start, enviar un mensaje con botones
   if (req.body.message?.text.startsWith("/start")) {
     const messageId = req.body.message.message_id;
@@ -85,8 +87,6 @@ app.post("/webhook", async (req, res) => {
       }
     }
   }
-
-  res.sendStatus(200);
 });
 
 // Configurar el Webhook en Telegram
@@ -182,4 +182,4 @@ if (isLocal) {
   setWebhook();
 }
 
-exports.app = functions.https.onRequest(app);
+exports.app = functions.runWith({ timeoutSeconds: 400 }).https.onRequest(app);

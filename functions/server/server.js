@@ -268,4 +268,4 @@ if (isLocal) {
   });
 }
 
-exports.app = functions.runWith({ memory: "512MB", timeoutSeconds: 300 }).https.onRequest(app);
+exports.app = functions.runWith({ memory: "512MB", timeoutSeconds: 400 }).https.onRequest(app);
