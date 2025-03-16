@@ -75,6 +75,15 @@ app.post("/bot", async (req, res) => {
 });
 
 app.post("/getCredits", async (req, res) => {
+  try {
+    const data = await loginCredits(USERNAME_WEB, PASSWORD_WEB);
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/getCodes", async (req, res) => {
   const { client_name, action } = req.body;
   let period = "";
 
@@ -95,7 +104,7 @@ app.post("/getCredits", async (req, res) => {
   }
 
   try {
-    const data = await loginYExtraerDatos(USERNAME_WEB, PASSWORD_WEB, client_name, period);
+    const data = await loginCodes(USERNAME_WEB, PASSWORD_WEB, client_name, period);
     res.json(data);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -139,7 +148,90 @@ async function resolverCaptcha(siteKey, pageUrl) {
   return null;
 }
 
-async function loginYExtraerDatos(username, password, client_name, period) {
+async function loginCredits(username, password) {
+  let browser;
+  if (isLocal) {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        "--disable-features=site-per-process", // Reduce el aislamiento de procesos
+        "--no-sandbox",
+        "--disable-setuid-sandbox", // Desactiva restricciones de seguridad (útil en servidores)
+        "--disable-dev-shm-usage", // Evita usar `/dev/shm` (útil en contenedores Docker)
+        "--disable-gpu", // Desactiva la GPU (en algunos sistemas acelera el rendimiento)
+        "--window-size=1920,1080", // Establece un tamaño de ventana grande
+      ],
+    });
+  } else {
+    browser = await puppeteerCore.launch({
+      headless: chrome.headless,
+      args: [...chrome.args, "--no-sandbox", "--disable-setuid-sandbox"],
+      executablePath: (await chrome.executablePath) || "/usr/bin/google-chrome-stable",
+    });
+  }
+  const pages = await browser.pages();
+  await Promise.all(pages.map((page) => page.close()));
+  const page = await browser.newPage();
+  await page.setRequestInterception(true);
+  page.on("request", (request) => {
+    if (["image", "stylesheet", "font"].includes(request.resourceType())) {
+      request.abort(); // ❌ Bloquear carga innecesaria
+    } else {
+      request.continue();
+    }
+  });
+  await page.goto(LOGIN_URL);
+
+  console.log("🟡 Ingresando usuario y contraseña...");
+  await page.type('input[name="username"]', username);
+  await page.type('input[name="password"]', password);
+
+  console.log("🟡 Detectando CAPTCHA...");
+  const siteKey = await page.evaluate(() => {
+    const captchaElement = document.querySelector(".g-recaptcha");
+    return captchaElement ? captchaElement.getAttribute("data-sitekey") : null;
+  });
+
+  if (siteKey) {
+    console.log("🔹 SiteKey encontrada:", siteKey);
+    const captchaToken = await resolverCaptcha(siteKey, LOGIN_URL);
+    if (captchaToken) {
+      await page.evaluate((token) => {
+        document.querySelector("#g-recaptcha-response").innerText = token;
+      }, captchaToken);
+    } else {
+      console.error("❌ No se pudo resolver el CAPTCHA.");
+      await browser.close();
+      return { success: false, message: "No se pudo resolver el CAPTCHA" };
+    }
+  } else {
+    console.log("❌ No se detectó CAPTCHA.");
+    await browser.close();
+    return { success: false, message: "No se detectó CAPTCHA" };
+  }
+
+  console.log("🟡 Haciendo login...");
+  await page.click('button[type="submit"]');
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
+  console.log("🟡 Extrayendo créditos...");
+  const credits = await page.evaluate(() => {
+    const preElement = document.querySelector("#top > div.left > pre");
+    return preElement ? preElement.innerText : null;
+  });
+
+  await browser.close();
+
+  if (credits) {
+    console.log("✅ Créditos extraídos: \n", credits);
+    return { success: true, message: credits };
+  } else {
+    console.error("❌ No se pudieron extraer los créditos.");
+    return { success: false, message: "No se pudieron extraer los créditos" };
+  }
+}
+
+async function loginCodes(username, password, client_name, period) {
   let browser;
   if (isLocal) {
     browser = await puppeteer.launch({

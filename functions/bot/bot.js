@@ -47,9 +47,28 @@ app.post("/webhook", async (req, res) => {
       console.log("Mensaje duplicado detectado");
       return res.sendStatus(200); // Ignorar mensajes duplicados
     }
-
     previousMessages.add(messageId);
+
     botSendMessage("✅ ¡Listo para empezar a gestionar tus pedidos!");
+  } else if (req.body.message?.text.startsWith("/credits")) {
+    const messageId = req.body.message.message_id;
+
+    if (previousMessages.has(messageId)) {
+      console.log("Mensaje duplicado detectado");
+      return res.sendStatus(200); // Ignorar mensajes duplicados
+    }
+    previousMessages.add(messageId);
+
+    try {
+      botSendMessage("💬 Recuperando créditos...");
+      const url = isLocal ? config.localUrlServer : config.urlServer;
+      const response = await axios.post(url + `/getCredits`);
+      console.log(`✅ Créditos obtenidos: \n`, response.data.message);
+      botSendMessage(`🧾 Créditos: \n${response.data.message}`);
+    } catch (error) {
+      console.log(`❌ Créditos NO recuperados. `, error);
+      botSendMessage(`❌ Error al obtener los créditos ❌ `);
+    }
   } else if (req.body.callback_query) {
     const callback_query = req.body.callback_query;
     const messageId = callback_query.message.message_id;
@@ -77,7 +96,7 @@ app.post("/webhook", async (req, res) => {
       try {
         console.log(`🟡 Pedido ${code} de ${action} en curso...`);
         const url = isLocal ? config.localUrlServer : config.urlServer;
-        const response = await axios.post(url + `/getCredits`, { client_name: name, action });
+        const response = await axios.post(url + `/getCodes`, { client_name: name, action });
         console.log(`✅ Pedido ${code} procesado. `, response.data.message);
         previousMessages.delete(callback_query.data);
         botSendMessage(`✅ *${code}* \n${response.data.message}`);
