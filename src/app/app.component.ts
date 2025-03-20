@@ -52,15 +52,20 @@ export class AppComponent implements OnInit {
   }
 
   randomNumberGen() {
+    this.isLoading = true;
     const numeroAleatorio = Math.floor(100000 + Math.random() * 900000);
     const timestamp = Date.now();
     const timestampUltimos6Digitos = timestamp % 1000000;
     const numeroUnico = (numeroAleatorio + timestampUltimos6Digitos) % 1000000;
     this.currencyService.getExchangeRate(this.amount).subscribe((data) => {
-      this.amount = data.result;
+      if (data.success) {
+        this.amount = data.result;
+      } else {
+        this.amount = this.amount - 5;
+      }
+      this.isLoading = false;
     });
     this.step++;
-    setTimeout(() => {}, 5000);
     this.numberGenerated = numeroUnico < 100000 ? numeroUnico + 100000 : numeroUnico;
   }
 
