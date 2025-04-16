@@ -38,9 +38,9 @@ app.post("/telegram-bot", async (req, res) => {
  */
 app.post("/bot-warning-credits", async (req, res) => {
   console.log(`🟡 Créditos restantes...`);
-  botSendMessage(`⚠️ Créditos restantes: *${req.body.credits}* ⚠️`);
+  botSendMessage(`⚠️ Créditos restantes: *${req.body.numCredits}* ⚠️`);
 
-  res.status(200).send(req.body.credits);
+  res.status(200).send(req.body.numCredits);
 });
 
 /**
