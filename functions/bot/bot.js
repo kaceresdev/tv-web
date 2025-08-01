@@ -105,10 +105,15 @@ app.post("/webhook", async (req, res) => {
       try {
         console.log(`🟡 Pedido ${code} de ${action} en curso...`);
         const url = isLocal ? config.localUrlServer : config.urlServer;
-        const response = await axios.post(url + `/getCodes`, { client_name: name, action });
+        const cleanName = name.replace(/[^a-zA-Z0-9 ]/g, ""); // Elimina caracteres especiales no permitidos
+        const response = await axios.post(url + `/getCodes`, { client_name: cleanName, action });
         console.log(`✅ Pedido ${code} procesado. `, response.data.message);
         previousMessages.delete(callback_query.data);
-        botSendMessage(`✅ *${code}* \n${response.data.message}`);
+        if (response.data.success) {
+          botSendMessage(`✅ *${code}* \n${response.data.message}`);
+        } else {
+          botSendMessage(`❌ Error al obtener los códigos del pedido *${code}* ❌ `);
+        }
       } catch (error) {
         console.log(`❌ Pedido ${code} NO procesado. `, error);
         botSendMessage(`❌ Error al obtener los códigos del pedido *${code}* ❌ `);

@@ -176,7 +176,7 @@ async function login(username, password) {
   let browser;
   if (isLocal) {
     browser = await puppeteer.launch({
-      headless: true,
+      headless: false, // Muestra el navegador
       args: [
         "--disable-features=site-per-process", // Reduce el aislamiento de procesos
         "--no-sandbox",
