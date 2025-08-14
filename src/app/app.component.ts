@@ -43,7 +43,7 @@ export class AppComponent implements OnInit {
       this.name = params["name"];
       if (this.name === "javi") {
         this.mobile_number = environment.numberJavi;
-        this.amount = 45;
+        this.amount = 50;
       } else if (this.name === "adri") {
         this.mobile_number = environment.numberAdri;
         this.amount = 40;
