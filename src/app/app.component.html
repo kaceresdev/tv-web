@@ -30,19 +30,35 @@
       <small>*Número de móvil resgistrado en whatsapp para contactarle más adelante</small>
     </div>
     <div class="mb-3 form-check">
-      <input type="checkbox" class="form-check-input" id="tivimate" [(ngModel)]="tivimate" />
-      <label class="form-check-label" for="tivimate"
-        >Marcar si necesitas una cuenta de <a href="https://tivimate.com/" target="_blank">Tivimate Premium</a> de por vida (+10€)</label
+      <input type="checkbox" class="form-check-input" id="tivimateCheckbox" [(ngModel)]="tivimateCheckbox" />
+      <label class="form-check-label" for="tivimateCheckbox"
+        >Necesito una cuenta de <a href="https://tivimate.com/" target="_blank">Tivimate Premium</a> de por vida (+10€/dispositivo)</label
       >
+    </div>
+    <div class="mb-3 form-check">
+      <input type="checkbox" class="form-check-input" id="vpnCheckbox" [(ngModel)]="vpnCheckbox" />
+      <label class="form-check-label" for="vpnCheckbox">Necesito una VPN (+6,5€/año)&nbsp;</label>
+      <u (click)="isModalOpen = true">¿Por qué necesito una VPN?</u>
     </div>
     <button type="button" class="btn btn-primary" [disabled]="!nameClientModel.valid || !mobileClientModel.valid" (click)="randomNumberGen()">
       Generar Código Personal
     </button>
+    @if (isModalOpen) {
+    <div id="modal" class="modal">
+      <div class="modal__content">
+        <div class="modal__content__text">
+          <img src="assets/imgs/info.svg" alt="info" width="22" />
+          <p>Algunos operadores de internet bloquean el contenido IPTV, por lo que se recomienda usar una VPN para evitar estos bloqueos.</p>
+        </div>
+        <button class="modal__content__btn" (click)="isModalOpen = false">Cerrar</button>
+      </div>
+    </div>
+    }
   </div>
   } @if (step === 2) {
   <div class="info">
     <p>
-      A continuación, debe realizar un bizum por importe de <b>{{ (tivimate ? amount + 10 : amount) | number : "1.2-2" }}€</b> al número:
+      A continuación, debe realizar un bizum por importe de <b>{{ amount | number : "1.2-2" }}€</b> al número:
     </p>
     <p class="mobile" (click)="copyText(mobile_number)">{{ mobile_number }}</p>
     <p>Poniendo en CONCEPTO su número personal generado:</p>
@@ -57,8 +73,9 @@
     <p class="h5">Todo listo {{ name_client }}!</p>
     <img src="assets/imgs/done.svg" alt="Done" />
     <p>Estamos comprobando su pago.</p>
-    <p>Nos pondremos en contacto con usted en un máximo de 24h a través del número de whatsapp que nos ha facilitado:</p>
+    <p>Los códigos se enviarán en un máximo de 24h al número de whatsapp que nos ha facilitado:</p>
     <p class="mobile">{{ mobile_client }}</p>
+    <p>Si ha seleccionado la opción de Tivimate Premium y/o VPN, se le enviarán los datos de acceso en el mismo mensaje.</p>
   </div>
   }
   <div class="floatingMessage" *ngIf="mostrarMensaje">Copiado correctamente</div>

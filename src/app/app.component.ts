@@ -22,11 +22,13 @@ export class AppComponent implements OnInit {
   name = "";
   name_client = "";
   mobile_client = "";
-  tivimate = false;
+  tivimateCheckbox = false;
+  vpnCheckbox = false;
   step = 1;
   numberGenerated = 0;
   mostrarMensaje: boolean = false;
   amount = 0;
+  isModalOpen = false;
 
   isLoading = false;
   isEmailKO = false;
@@ -63,6 +65,12 @@ export class AppComponent implements OnInit {
       } else {
         this.amount = this.amount - 5;
       }
+      if (this.tivimateCheckbox) {
+        this.amount = this.amount + 10;
+      }
+      if (this.vpnCheckbox) {
+        this.amount = this.amount + 6.5;
+      }
       this.isLoading = false;
     });
     this.step++;
@@ -86,21 +94,23 @@ export class AppComponent implements OnInit {
   nextStep() {
     this.isLoading = true;
     this.isEmailKO = false;
-    this.emailService.sendEmail(this.name, this.name_client, this.mobile_client, this.tivimate, this.numberGenerated).subscribe({
-      next: (resp) => {
-        this.isLoading = false;
-        console.log("Email sent ", resp);
-        this.step++;
-      },
-      error: (err) => {
-        this.isLoading = false;
-        this.isEmailKO = true;
-        console.error("An error occurred :", err);
-      },
-      complete: () => {
-        console.log("There are no more action happen.");
-      },
-    });
+    this.emailService
+      .sendEmail(this.name, this.name_client, this.mobile_client, this.tivimateCheckbox, this.vpnCheckbox, this.numberGenerated)
+      .subscribe({
+        next: (resp) => {
+          this.isLoading = false;
+          console.log("Email sent ", resp);
+          this.step++;
+        },
+        error: (err) => {
+          this.isLoading = false;
+          this.isEmailKO = true;
+          console.error("An error occurred :", err);
+        },
+        complete: () => {
+          console.log("There are no more action happen.");
+        },
+      });
     this.telegramBotService.sendToTelegram(this.name_client, this.mobile_client, this.numberGenerated).subscribe({
       next: (resp) => {
         console.log("Telegram message sent ", resp);

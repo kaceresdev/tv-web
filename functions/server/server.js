@@ -28,7 +28,7 @@ app.use(cors());
  * Endpoint enviar email de pedido
  */
 app.post("/send-email", (req, res) => {
-  const { name, name_client, mobile_client, code, tivimate } = req.body;
+  const { name, name_client, mobile_client, code, tivimate, vpn } = req.body;
 
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -48,6 +48,7 @@ app.post("/send-email", (req, res) => {
         Nombre: ${name_client}
         Whatsapp: ${mobile_client}
         Tivimate: ${tivimate ? "Si" : "No"}
+        VPN: ${vpn ? "Si" : "No"}
     `,
   };
 
