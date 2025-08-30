@@ -276,7 +276,10 @@ async function getCredits(username, password) {
 async function getCodes(username, password, client_name, period) {
   const { page, browser } = await login(username, password);
 
-  if ((page != typeof puppeteerCore.Page) | puppeteer.Page || (browser != typeof puppeteerCore.Browser) | puppeteer.Browser) {
+  if (
+    !(page instanceof puppeteerCore.Page || page instanceof puppeteer.Page) ||
+    !(browser instanceof puppeteerCore.Browser || browser instanceof puppeteer.Browser)
+  ) {
     return { success: false, message: "❌ No se pudo realizar login" };
   }
 
