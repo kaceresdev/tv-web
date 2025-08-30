@@ -81,7 +81,8 @@ app.post("/webhook", async (req, res) => {
   } else if (req.body.callback_query) {
     const callback_query = req.body.callback_query;
     const messageId = callback_query.message.message_id;
-    const [action, name, code, mobile] = callback_query.data.split("_");
+    const messageText = callback_query.message.text;
+    const [action, name, code, mobile, period] = callback_query.data.split("_");
 
     if (previousMessages.has(callback_query.data)) {
       console.log("Acción duplicada detectada");
@@ -90,39 +91,50 @@ app.post("/webhook", async (req, res) => {
 
     if (action == "accept") {
       optionsBtns(name, code, mobile, messageId);
-    } else if (action == "reject") {
-      console.log(`❌ Pedido ${code} rechazado`);
-      botEditMessage(`📝 Pedido *${code}*, a nombre de *${name}* y con numero de teléfono *${mobile}* recibido`, messageId);
-      botSendMessage(`❌ Pedido *${code}* rechazado`);
+    } else if (action == "cancel") {
+      console.log(`❌ Pedido ${code} cancelado`);
+      botEditMessage(messageText, messageId);
+      botSendMessage(`❌ Pedido *${code}* cancelado`);
     } else if (action == "back") {
       initialBtns(name, code, mobile, true, messageId);
+    } else if (action == "retry") {
+      console.log(`🔄 Reintentando pedido ${code}`);
+      botEditMessage(`❌ Error al obtener los códigos del pedido *${code}* ❌ `, messageId);
+      acceptGetCodes(period, code, name, mobile, callback_query, true);
     } else {
       previousMessages.add(callback_query.data);
-
       botEditMessage(`📝 Pedido *${code}*, a nombre de *${name}* y con numero de teléfono *${mobile}* recibido`, messageId);
-      botSendMessage(`💬 Procesando el pedido *${code}* de *${action}*...`);
-
-      try {
-        console.log(`🟡 Pedido ${code} de ${action} en curso...`);
-        const url = isLocal ? config.localUrlServer : config.urlServer;
-        const cleanName = name.replace(/[^a-zA-Z0-9 ]/g, ""); // Elimina caracteres especiales no permitidos
-        const response = await axios.post(url + `/getCodes`, { client_name: cleanName, action });
-        console.log(`✅ Pedido ${code} procesado. `, response.data.message);
-        previousMessages.delete(callback_query.data);
-        if (response.data.success) {
-          botSendMessage(`✅ *${code}* \n${response.data.message}`);
-        } else {
-          botSendMessage(`❌ Error al obtener los códigos del pedido *${code}* ❌ `);
-        }
-      } catch (error) {
-        console.log(`❌ Pedido ${code} NO procesado. `, error);
-        botSendMessage(`❌ Error al obtener los códigos del pedido *${code}* ❌ `);
-      }
+      acceptGetCodes(action, code, name, mobile, callback_query, false);
     }
   }
 });
 
 // ** FUNCTIONS **
+
+const acceptGetCodes = async (action, code, name, mobile, callback_query, isRetry) => {
+  botSendMessage(`💬 Procesando el pedido *${code}* de *${action}*...`);
+
+  try {
+    console.log(`🟡 Pedido ${code} de ${action} en curso...`);
+    const url = isLocal ? config.localUrlServer : config.urlServer;
+    const cleanName = name.replace(/[^a-zA-Z0-9 ]/g, ""); // Elimina caracteres especiales no permitidos
+    const response = await axios.post(url + `/getCodes`, { client_name: cleanName, action });
+    console.log(`✅ Pedido ${code} procesado. `, response.data.message);
+    previousMessages.delete(callback_query.data);
+    if (response.data.success) {
+      botSendMessage(`✅ *${code}* \n${response.data.message}`);
+    } else {
+      if (response.data.message.includes("No se pudo realizar login") && !isRetry) {
+        retryBtns(action, name, code, mobile);
+      } else {
+        botSendMessage(`❌ Error al obtener los códigos del pedido *${code}* ❌ `);
+      }
+    }
+  } catch (error) {
+    console.log(`❌ Pedido ${code} NO procesado. `, error);
+    botSendMessage(`❌ Error al obtener los códigos del pedido *${code}* ❌ `);
+  }
+};
 
 const initialBtns = async (name, code, mobile, editar = false, messageId = null) => {
   const initialOpts = {
@@ -130,7 +142,7 @@ const initialBtns = async (name, code, mobile, editar = false, messageId = null)
       inline_keyboard: [
         [
           { text: "✅ Aceptar", callback_data: `accept_${name}_${code}_${mobile}` },
-          { text: "❌ Rechazar", callback_data: `reject_${name}_${code}_${mobile}` },
+          { text: "❌ Rechazar", callback_data: `cancel_${name}_${code}_${mobile}` },
         ],
       ],
     },
@@ -158,6 +170,21 @@ const optionsBtns = async (name, code, mobile, messageId) => {
   };
 
   botEditMessage(`📝 Pedido *${code}*, a nombre de *${name}* y con numero de teléfono *${mobile}* recibido`, messageId, periodOpts.reply_markup);
+};
+
+const retryBtns = async (period, name, code, mobile) => {
+  const retryOpts = {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: "🔄 Reintentar", callback_data: `retry_${name}_${code}_${mobile}_${period}` },
+          { text: "❌ Cancelar", callback_data: `cancel_${name}_${code}_${mobile}_${period}` },
+        ],
+      ],
+    },
+  };
+
+  botSendMessage(`❌ Error al obtener los códigos del pedido *${code}* ❌ `, retryOpts.reply_markup);
 };
 
 const botSendMessage = async (text, reply_markup = { inline_keyboard: [] }) => {

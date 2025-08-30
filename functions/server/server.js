@@ -276,6 +276,10 @@ async function getCredits(username, password) {
 async function getCodes(username, password, client_name, period) {
   const { page, browser } = await login(username, password);
 
+  if ((page != typeof puppeteerCore.Page) | puppeteer.Page || (browser != typeof puppeteerCore.Browser) | puppeteer.Browser) {
+    return { success: false, message: "❌ No se pudo realizar login" };
+  }
+
   console.log("🟡 Navegando...");
   await page.click("#sidebar > li:nth-child(2) > a");
   await new Promise((resolve) => setTimeout(resolve, 2000));
