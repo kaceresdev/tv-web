@@ -57,14 +57,24 @@
   </div>
   } @if (step === 2) {
   <div class="info">
-    <p>
-      A continuación, debe realizar un bizum por importe de <b>{{ amount | number : "1.2-2" }}€</b> al número:
-    </p>
-    <p class="mobile" (click)="copyText(mobile_number)">{{ mobile_number }}</p>
-    <p>Poniendo en CONCEPTO su número personal generado:</p>
-    <p class="generatedNumber" (click)="copyText(numberGenerated)">{{ numberGenerated }}</p>
-    <small>*Puede pulsar sobre el número de teléfono o sobre el número generado para copiarlo directamente</small>
-    <br />
+    <div class="payment-box">
+      <h4>Pago con Bizum</h4>
+      <p>
+        A continuación, debe realizar un bizum por importe de <b>{{ amount | number : "1.2-2" }}€</b> al número:
+      </p>
+      <p class="mobile" (click)="copyText(mobile_number)">{{ mobile_number }}</p>
+      <p>Poniendo en CONCEPTO su número personal generado:</p>
+      <p class="generatedNumber" (click)="copyText(numberGenerated)">{{ numberGenerated }}</p>
+      <small>*Puede pulsar sobre el número de teléfono o sobre el número generado para copiarlo directamente</small>
+    </div>
+    @if (name === 'javi') {
+    <div class="payment-box">
+      <h4>Pago con Criptomonedas</h4>
+      <p>También puede pagar con criptomonedas. Para ello, contacte por whatsapp al teléfono:</p>
+      <p class="mobile" (click)="copyText(mobile_number)">{{ mobile_number }}</p>
+      <small>*Puede pulsar sobre el número de teléfono para copiarlo directamente</small>
+    </div>
+    }
     <p>Cuando haya realizado el pago pulse el siguiente botón:</p>
     <button type="button" class="btn btn-success" (click)="nextStep()">Hecho</button>
   </div>
