@@ -37,7 +37,7 @@ export class AppComponent implements OnInit {
     private route: ActivatedRoute,
     private currencyService: CurrencyService,
     private emailService: EmailService,
-    private telegramBotService: TelegramBotService
+    private telegramBotService: TelegramBotService,
   ) {}
 
   ngOnInit(): void {
@@ -45,7 +45,7 @@ export class AppComponent implements OnInit {
       this.name = params["name"];
       if (this.name === "javi") {
         this.mobile_number = environment.numberJavi;
-        this.amount = 50;
+        this.amount = 51;
       } else if (this.name === "adri") {
         this.mobile_number = environment.numberAdri;
         this.amount = 40;

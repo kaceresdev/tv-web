@@ -118,7 +118,14 @@ const acceptGetCodes = async (action, code, name, mobile, callback_query, isRetr
     console.log(`🟡 Pedido ${code} de ${action} en curso...`);
     const url = isLocal ? config.localUrlServer : config.urlServer;
     const cleanName = name.replace(/[^a-zA-Z0-9 ]/g, ""); // Elimina caracteres especiales no permitidos
-    const response = await axios.post(url + `/getCodes`, { client_name: cleanName, action });
+    const response = await axios.post(url + `/getCodes`, {
+      client_name: cleanName,
+      action,
+      code,
+      name,
+      mobile,
+      mobile_number: mobile,
+    });
     console.log(`✅ Pedido ${code} procesado. `, response.data.message);
     previousMessages.delete(callback_query.data);
     if (response.data.success) {

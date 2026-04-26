@@ -8,6 +8,7 @@
 
 # Node
 /node_modules
+functions/node_modules
 functions/server/node_modules
 functions/server/variables.js
 functions/bot/node_modules

@@ -3,11 +3,13 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const nodemailer = require("nodemailer");
 const functions = require("firebase-functions");
+
 const axios = require("axios");
 const puppeteer = require("puppeteer");
 const puppeteerCore = require("puppeteer-core");
 const chrome = require("chrome-aws-lambda");
 const config = require("./variables");
+const { parseExpirationDateForDb, parseMobileBigint, resolveOrderCodeBigint, saveUsersRowToSupabase } = require("./supabase");
 
 const app = express();
 const port = 8443;
@@ -95,7 +97,7 @@ app.post("/getCredits", async (req, res) => {
  * Endpoint para obtener los códigos
  */
 app.post("/getCodes", async (req, res) => {
-  const { client_name, action } = req.body;
+  const { client_name, action, code, name, mobile, mobile_number } = req.body;
   let period = "";
 
   switch (action) {
@@ -114,8 +116,14 @@ app.post("/getCodes", async (req, res) => {
       break;
   }
 
+  const rowMeta = {
+    code: resolveOrderCodeBigint(code),
+    name: (name != null && String(name).trim() !== "" ? name : client_name) || "",
+    mobile: mobile != null ? parseMobileBigint(mobile) : mobile_number != null ? parseMobileBigint(mobile_number) : 0,
+  };
+
   try {
-    const data = await getCodes(USERNAME_WEB, PASSWORD_WEB, client_name, period);
+    const data = await getCodes(USERNAME_WEB, PASSWORD_WEB, client_name, period, rowMeta);
     res.json(data);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -135,7 +143,7 @@ async function resolverCaptcha(siteKey, pageUrl) {
 
   // Enviar el CAPTCHA a 2Captcha
   const response = await axios.get(
-    `http://2captcha.com/in.php?key=${API_KEY_2CAPTCHA}&method=userrecaptcha&googlekey=${siteKey}&pageurl=${pageUrl}&json=1`
+    `http://2captcha.com/in.php?key=${API_KEY_2CAPTCHA}&method=userrecaptcha&googlekey=${siteKey}&pageurl=${pageUrl}&json=1`,
   );
 
   if (response.data.status !== 1) {
@@ -160,7 +168,7 @@ async function resolverCaptcha(siteKey, pageUrl) {
       console.error("❌ Error al evaluar el CAPTCHA: ", error);
       return null;
     }
-    console.log(`🔄 Intento ${i + 1}: CAPTCHA aún no está listo...`);
+    console.log(`🔄 Intento ${i + 1}: CAPTCHA aún no está resuelto...`);
   }
 
   console.error("❌ No se pudo resolver el CAPTCHA en el tiempo esperado.");
@@ -272,8 +280,9 @@ async function getCredits(username, password) {
  * Función que recupera los códigos de la lista
  * @param {*} username usuario de la url de login
  * @param {*} password contraseña de la url de login
+ * @param {{ code: number|null, name: string, mobile: number }} rowMeta datos para la tabla Users de Supabase
  */
-async function getCodes(username, password, client_name, period) {
+async function getCodes(username, password, client_name, period, rowMeta) {
   const { page, browser } = await login(username, password);
 
   if (!(page?.constructor?.name === "Page") || !(browser?.constructor?.name === "Browser")) {
@@ -306,6 +315,18 @@ async function getCodes(username, password, client_name, period) {
     return contentElement ? contentElement.innerText : null;
   }, hashValue);
 
+  console.log("🟡 Extrayendo nombre de usuario de la lista...");
+  const usernameList = await page.evaluate(() => {
+    const tdWithDataAttr = document.querySelector("#mnglines > tbody > tr:nth-child(2) > td:nth-child(3)");
+    return tdWithDataAttr ? tdWithDataAttr.innerText : null;
+  });
+
+  console.log("🟡 Extrayendo fecha expiración...");
+  const expirationDate = await page.evaluate(() => {
+    const expirationDateElement = document.querySelector("#mnglines > tbody > tr:nth-child(2) > td:nth-child(6)");
+    return expirationDateElement ? expirationDateElement.innerText : null;
+  });
+
   console.log("🟡 Extrayendo créditos...");
   const credits = await page.evaluate(() => {
     const preElement = document.querySelector("#top > div.left > pre");
@@ -313,6 +334,20 @@ async function getCodes(username, password, client_name, period) {
   });
 
   await browser.close();
+
+  if (["3mois", "6mois", "12mois"].includes(period)) {
+    const supabaseRow = {
+      code: rowMeta.code,
+      name: rowMeta.name,
+      mobile: rowMeta.mobile,
+      username_list: usernameList,
+      expirationdate_list: parseExpirationDateForDb(expirationDate),
+      data_list: codes,
+      status: "active",
+    };
+
+    await saveUsersRowToSupabase(supabaseRow);
+  }
 
   const numCredits = credits.match(/CREDIT LEFT\s*:\s*(\d+)/)[1];
 
@@ -329,7 +364,6 @@ async function getCodes(username, password, client_name, period) {
   }
 
   if (codes) {
-    console.log("✅ Datos extraídos: \n", codes);
     return { success: true, message: codes };
   } else {
     console.error("❌ No se pudieron extraer los datos.");
@@ -345,4 +379,9 @@ if (isLocal) {
   });
 }
 
-exports.app = functions.runWith({ memory: "512MB", timeoutSeconds: 400 }).https.onRequest(app);
+exports.app = functions
+  .runWith({
+    memory: "512MB",
+    timeoutSeconds: 400,
+  })
+  .https.onRequest(app);
